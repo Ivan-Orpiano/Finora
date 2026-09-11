@@ -29,5 +29,45 @@ class Category(models.Model):
     def __str__(self):
         return self.name
     
+
+class Expense(models.Model):
+     """A single expense entry.
+    Daily, monthly, quarterly, semi-annual and yearly breakdowns are all
+    derived from `date` at query time (see api/utils.py) — there is
+    deliberately no separate table per period, since that would just be the
+    same rows duplicated and would go stale the moment an expense is edited.
+    """
     
+owner = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.CASCADE,
+    related_name="expenses",
+    )
+category = models.ForeignKey(
+    Category,
+    on_delete=models.SET_NULL,
+    null = True,
+    blank = True,
+    related_name="expenses",
+    )
+title = models.CharField(max_length=150)
+amount = models.DecimalField(
+    max_digits=12,
+    decimal_places=2,
+    validators=[MinValueValidator(Decimal("0.01"))],
+    )
+date = models.DataField(help_text = "Date the expense was incurred.")
+notes = models.TextField(blank=True)
+created_at = models.DateTimeField(auto_now_add=True)
+updated_at = models.DateTimeField(auto_now=True)
+
+class Meta:
+    ordering = ["-date", "-created_at"]
+    indexes = [models.Index(fields = ["owner", "date"]),]
+    
+def __str__(self):
+    return f"{self.title} - {self.amount} on {self.date}"
+
+class SavingsGoal(models.Model):
+    """ A savings target the user is tracking progress toward the savings tracker"""
     
