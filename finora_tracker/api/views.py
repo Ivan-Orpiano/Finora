@@ -97,7 +97,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         )
         return Response(list(data))
     
-class SavingsGoalviewSet(viewsets.ModelViewSet):
+class SavingsGoalViewSet(viewsets.ModelViewSet):
     """CRUD for savings goals, plus an endpoint to log a contribution.
 
     /api/savings-goals/                          list / create
