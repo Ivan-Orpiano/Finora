@@ -89,5 +89,60 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         
     @action(detail = False, methods = ["get"], url_path="by_category")
     def by_category(self, request):
-        pass
+        queryset = self.get_queryset()
+        date = (
+            queryset.values("category", "category__name")
+            .annotate(total = Sum("amount"))
+            .order_by("-total")
+        )
+        return Response(list(data))
+    
+class SavingsGoalviewSet(viewsets.ModelViewSet):
+    """CRUD for savings goals, plus an endpoint to log a contribution.
+
+    /api/savings-goals/                          list / create
+    /api/savings-goals/{id}/                      retrieve / update / delete
+    /api/savings-goals/{id}/add-contribution/     POST {"amount", "date", "note"}
+    """
+
+    serializer_class = SavingsGoalSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwner]
+    
+    def get_queryset(self):
+        return SavingsGoal.objects.filter(owner = self.request.user)
+    
+    def perform_create(self, serializer):
+        serializer.save(owner = self.request.user)
         
+    @action(detail = True, methods = ["post"], url_path = "add-contribution")
+    def add_contribution(self, request, pk = None):
+        
+        """Log a deposit (positive amount) or withdrawal (negative amount).
+
+        Body: {"amount": 500, "date": "2026-09-11", "note": "Payday deposit"}
+        """
+        goal = self.get_object()
+
+        # request.data can be a plain dict (JSON, what the React app sends)
+        # or a QueryDict (multipart/form POSTs, e.g. from the browsable API
+        # or Postman form-data). QueryDict stores values internally as
+        # lists, and `{**querydict}` bypasses its scalar-returning
+        # __getitem__ and copies those raw lists - so it must be updated
+        # via .copy() + item assignment instead of spread.
+        
+        if hasattr(request.date, "copy") and hasattr(request.data, "_mutable"):
+            data  = request.data.copy()
+            data["goal"] = goal.id
+            
+        else:
+            data = {**request.data, "goal": goal.id}
+            
+        serializer = SavingsContributionSerializer(
+            data=data,
+            context = {"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(SavingsGoalSerializer(goal).data, status = status.HTTP_201_CREATED)
+    
+    
