@@ -71,7 +71,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     def summary(self, request):
         period = request.query_params.get("period", "monthly")
         if period not in PERIOD_CHOICES:
-            return response(
+            return Response(
                 {"detail" : f"period must be one of {PERIOD_CHOICES}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -90,7 +90,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
     @action(detail = False, methods = ["get"], url_path="by_category")
     def by_category(self, request):
         queryset = self.get_queryset()
-        date = (
+        data = (
             queryset.values("category", "category__name")
             .annotate(total = Sum("amount"))
             .order_by("-total")
@@ -144,5 +144,20 @@ class SavingsGoalviewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(SavingsGoalSerializer(goal).data, status = status.HTTP_201_CREATED)
+    
+class SavingsContributionViewSet(viewsets.ModelViewSet):
+    """CRUD for individual savings contributions. /api/savings-contributions/"""
+    
+    serializer_class = SavingsContributionSerializer
+    permission_classes = [permissions.IsAuthenticated, IsOwner]
+    
+    def get_queryset(self):
+        return SavingsContribution.objects.filter(goal_owner = self.request.user)
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+    
     
     
